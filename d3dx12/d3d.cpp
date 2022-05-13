@@ -33,7 +33,7 @@ ID3D12Resource* renderTargets[frameBufferCount]; // number of render targets equ
 
 ID3D12CommandAllocator* commandAllocator[frameBufferCount]; // we want enough allocators for each buffer * number of threads (we only have one thread)
 
-ID3D12GraphicsCommandList* commandList; // a command list we can record commands into, then execute them to render the frame
+ID3D12GraphicsCommandList2* commandList; // a command list we can record commands into, then execute them to render the frame
 
 ID3D12Fence* fence[frameBufferCount];    // an object that is locked while our command list is being executed by the gpu. We need as many 
                                          //as we have allocators (more if we want to know when the gpu is finished with an asset)
@@ -257,7 +257,10 @@ static void CheckFeature(ID3D12Device *dev)
         D3D12_FEATURE_FEATURE_LEVELS,
         &featureLevelsInfo,
         sizeof(featureLevelsInfo));
-
+    std::wstring text = L"***MaxSupportedFeatureLevel: ";
+    text += std::to_wstring(featureLevelsInfo.MaxSupportedFeatureLevel) ;
+    text += L"\n";
+    OutputDebugString(text.c_str());
 }
 bool InitD3D()
 {
@@ -580,10 +583,10 @@ bool InitD3D()
     // a triangle
     Vertex vList[] = {
         // first quad (closer to camera, blue)
-        { -0.5f,  0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f },
-        {  0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f },
-        { -0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f },
-        {  0.5f,  0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f },
+        { -0.5f,  0.5f, 0.6f, 0.0f, 0.0f, 1.0f, 1.0f },
+        {  0.5f, -0.5f, 0.6f, 0.0f, 0.0f, 1.0f, 1.0f },
+        { -0.5f, -0.5f, 0.6f, 0.0f, 0.0f, 1.0f, 1.0f },
+        {  0.5f,  0.5f, 0.6f, 0.0f, 0.0f, 1.0f, 1.0f },
 
         // second quad (further from camera, green)
         { -0.75f,  0.75f,  0.4f, 0.0f, 1.0f, 0.0f, 1.0f },

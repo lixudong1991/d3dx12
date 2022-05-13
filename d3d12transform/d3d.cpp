@@ -66,7 +66,9 @@ ID3D12DescriptorHeap* dsDescriptorHeap; // This is a heap for our depth/stencil 
 
 // this is the structure of our constant buffer.
 struct ConstantBufferPerObject {
-    XMFLOAT4X4 wvpMat;
+    XMFLOAT4X4 projMat;
+    XMFLOAT4X4 viewMat;
+    XMFLOAT4X4 worldMat;
     XMFLOAT4 colorMultiplier;
 };
 
@@ -844,11 +846,11 @@ bool InitD3D()
     scissorRect.bottom = Height;
 
     // build projection and view matrix
-    XMMATRIX tmpMat = XMMatrixPerspectiveFovLH(45.0f * (3.14f / 180.0f), (float)Width / (float)Height, 0.1f, 1000.0f);
+    XMMATRIX tmpMat = XMMatrixPerspectiveFovLH(60.0f * (3.14f / 180.0f), (float)Width / (float)Height, 0.1f, 100.0f);
     XMStoreFloat4x4(&cameraProjMat, tmpMat);
 
     // set starting camera state
-    cameraPosition = XMFLOAT4(-1.0f, 2.0f, -4.0f, 0.0f);
+    cameraPosition = XMFLOAT4(-2.0f, 2.0f, -2.0f, 0.0f);
     cameraTarget = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.0f);
     cameraUp = XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
 
@@ -929,11 +931,14 @@ void Update()
 
     // update constant buffer for cube1
     // create the wvp matrix and store in constant buffer
-    XMMATRIX viewMat = XMLoadFloat4x4(&cameraViewMat); // load view matrix
-    XMMATRIX projMat = XMLoadFloat4x4(&cameraProjMat); // load projection matrix
-    XMMATRIX wvpMat = XMLoadFloat4x4(&cube1WorldMat) * viewMat * projMat; // create wvp matrix
-    XMMATRIX transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
-    XMStoreFloat4x4(&cbPerObject.wvpMat, transposed); // store transposed wvp matrix in constant buffer
+  //  XMMATRIX viewMat = XMLoadFloat4x4(&cameraViewMat); // load view matrix
+  //  XMMATRIX projMat = XMLoadFloat4x4(&cameraProjMat); // load projection matrix
+ //  XMMATRIX wvpMat = XMLoadFloat4x4(&cube1WorldMat) * viewMat * projMat; // create wvp matrix
+   // XMMATRIX transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
+    cbPerObject.projMat = cameraProjMat;
+    cbPerObject.viewMat = cameraViewMat;
+    cbPerObject.worldMat = cube1WorldMat;
+   // XMStoreFloat4x4(&cbPerObject.worldMat, wvpMat); // store transposed wvp matrix in constant buffer
 
 
     // copy our ConstantBuffer instance to the mapped constant buffer resource
@@ -961,9 +966,12 @@ void Update()
     // finally we move it to cube 1's position, which will cause it to rotate around cube 1
     worldMat = scaleMat * translationOffsetMat * rotMat * translationMat;
 
-    wvpMat = XMLoadFloat4x4(&cube2WorldMat) * viewMat * projMat; // create wvp matrix
-    transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
-    XMStoreFloat4x4(&cbPerObject.wvpMat, transposed); // store transposed wvp matrix in constant buffer
+   // wvpMat = XMLoadFloat4x4(&cube2WorldMat) * viewMat * projMat; // create wvp matrix
+   // transposed = XMMatrixTranspose(wvpMat); // must transpose wvp matrix for the gpu
+  //  XMStoreFloat4x4(&cbPerObject.wvpMat, wvpMat); // store transposed wvp matrix in constant buffer
+    cbPerObject.projMat = cameraProjMat;
+    cbPerObject.viewMat = cameraViewMat;
+    cbPerObject.worldMat = cube2WorldMat;
 
     // copy our ConstantBuffer instance to the mapped constant buffer resource
     memcpy(cbvGPUAddress[frameIndex] + ConstantBufferPerObjectAlignedSize, &cbPerObject, sizeof(cbPerObject));
