@@ -4,9 +4,9 @@
 
 struct BezierCtlPoint
 {
-   QPointF m_controlPoint[4];
+   QPointF m_controlPoint[16];
    QGraphicsPathItem* m_pathitem;
-   QGraphicsEllipseItem *pointItems[4];
+   QGraphicsEllipseItem *pointItems[16];
 };
 
 class BezierScene : public QGraphicsScene
