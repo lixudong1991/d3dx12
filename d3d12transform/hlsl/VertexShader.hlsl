@@ -22,9 +22,9 @@ VS_OUTPUT main(VS_INPUT input)
 {
     VS_OUTPUT output;
     matrix tMat;
-    vector a1 = { 0.5f,0.0f,0.0f,0.0f};
-    vector a2 = { 0.0f,0.5f,0.0f,0.0f };
-    vector a3 = { 0.0f,0.0f,0.5f,0.0f };
+    vector a1 = { 1.0f,0.0f,0.0f,0.0f};
+    vector a2 = { 0.0f,1.0f,0.0f,0.0f };
+    vector a3 = { 0.0f,0.0f,1.0f,0.0f };
     vector a4 = { 0.0f,0.0f,0.0f,1.0f };
     tMat[0] = a1;
     tMat[1] = a2;

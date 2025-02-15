@@ -5,6 +5,7 @@
 #endif
 
 #include <windows.h>
+#include <windowsx.h>
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <D3Dcompiler.h>

@@ -1,5 +1,5 @@
 #include "stdafx.h"
-
+#include <fstream>
 using namespace DirectX; // we will be using the directxmath library
 
 // Handle to the window
@@ -81,7 +81,7 @@ struct ConstantBufferPerObject {
 // buffer data to the gpu virtual address. currently we memcpy the size of our structure, which is 16 bytes here, but if we
 // were to add the padding array, we would memcpy 64 bytes if we memcpy the size of our structure, which is 50 wasted bytes
 // being copied.
-int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
+const int ConstantBufferPerObjectAlignedSize = (sizeof(ConstantBufferPerObject) + 255) & ~255;
 
 ConstantBufferPerObject cbPerObject; // this is the constant buffer data we will send to the gpu 
                                         // (which will be placed in the resource we created above)
@@ -201,6 +201,32 @@ void mainloop() {
         }
     }
 }
+POINT mLastMousePos;
+float mTheta = 1.5f * XM_PI;
+float mPhi = XM_PIDIV4;
+float mRadius = 5.0f;
+template<typename T>
+static T Clamp(const T& x, const T& low, const T& high)
+{
+    return x < low ? low : (x > high ? high : x);
+}
+const float Pi = 3.1415926535f;
+
+void LoadBinary(const std::wstring& filename, ID3DBlob **blob)
+{
+    std::ifstream fin(filename, std::ios::binary);
+
+    fin.seekg(0, std::ios_base::end);
+    std::ifstream::pos_type size = (int)fin.tellg();
+    fin.seekg(0, std::ios_base::beg);
+
+    D3DCreateBlob(size, blob);
+
+    fin.read((char*)((*blob)->GetBufferPointer()), size);
+    fin.close();
+
+    return;
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd,
     UINT msg,
@@ -225,6 +251,56 @@ LRESULT CALLBACK WndProc(HWND hwnd,
         Running = false;
         PostQuitMessage(0);
         return 0;
+    case WM_LBUTTONDOWN:
+    case WM_MBUTTONDOWN:
+    case WM_RBUTTONDOWN:
+    {
+        mLastMousePos.x = GET_X_LPARAM(lParam);
+        mLastMousePos.y = GET_Y_LPARAM(lParam);
+
+        SetCapture(hwnd);
+        break;
+    }
+    case WM_LBUTTONUP:
+    case WM_MBUTTONUP:
+    case WM_RBUTTONUP:
+    {
+        ReleaseCapture();
+        break;
+    }
+    case WM_MOUSEMOVE:
+    {
+        if ((wParam & MK_LBUTTON) != 0)
+        {
+            // Make each pixel correspond to a quarter of a degree.
+            float dx = XMConvertToRadians(0.25f * static_cast<float>(GET_X_LPARAM(lParam) - mLastMousePos.x));
+            float dy = XMConvertToRadians(0.25f * static_cast<float>(GET_Y_LPARAM(lParam) - mLastMousePos.y));
+
+            // Update angles based on input to orbit camera around box.
+            mTheta += dx;
+            mPhi += dy;
+
+            // Restrict the angle mPhi.
+            mPhi = Clamp(mPhi, 0.1f, Pi - 0.1f);
+        }
+        else if ((wParam & MK_RBUTTON) != 0)
+        {
+            // Make each pixel correspond to 0.005 unit in the scene.
+            float dx = 0.005f * static_cast<float>(GET_X_LPARAM(lParam) - mLastMousePos.x);
+            float dy = 0.005f * static_cast<float>(GET_Y_LPARAM(lParam) - mLastMousePos.y);
+
+            // Update the camera radius based on input.
+            mRadius += dx - dy;
+
+            // Restrict the radius.
+            mRadius = Clamp(mRadius, 3.0f, 15.0f);
+        }
+
+        mLastMousePos.x = GET_X_LPARAM(lParam);
+        mLastMousePos.y = GET_Y_LPARAM(lParam);
+        break;
+    }
+
     }
     return DefWindowProc(hwnd,
         msg,
@@ -466,9 +542,9 @@ bool InitD3D()
     // them at runtime
 
     // compile vertex shader
-    ID3DBlob* vertexShader; // d3d blob for holding vertex shader bytecode
-    ID3DBlob* errorBuff; // a buffer holding the error data if any
-    hr = D3DCompileFromFile(L"hlsl\\VertexShader.hlsl",
+    ID3DBlob* vertexShader = NULL; // d3d blob for holding vertex shader bytecode
+    ID3DBlob* errorBuff = NULL; // a buffer holding the error data if any
+  /*  hr = D3DCompileFromFile(L"hlsl\\VertexShader.hlsl",
         nullptr,
         nullptr,
         "main",
@@ -481,8 +557,8 @@ bool InitD3D()
     {
         OutputDebugStringA((char*)errorBuff->GetBufferPointer());
         return false;
-    }
-
+    }*/
+    LoadBinary(L"hlsl\\VertexShader.cso", &vertexShader);
     // fill out a shader bytecode structure, which is basically just a pointer
     // to the shader bytecode and the size of the shader bytecode
     D3D12_SHADER_BYTECODE vertexShaderBytecode = {};
@@ -647,7 +723,7 @@ bool InitD3D()
     // we are now creating a command with the command list to copy the data from
     // the upload heap to the default heap
     UpdateSubresources(commandList, vertexBuffer, vBufferUploadHeap, 0, 0, 1, &vertexData);
-
+  
     CD3DX12_RESOURCE_BARRIER res_barrier = CD3DX12_RESOURCE_BARRIER::Transition(vertexBuffer, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
     // transition the vertex buffer data from copy destination state to vertex buffer state
     commandList->ResourceBarrier(1, &res_barrier);
@@ -910,7 +986,16 @@ void Update()
         cbPerObject.colorMultiplier.z = cbPerObject.colorMultiplier.z >= 1.0 ? 1.0 : 0.0;
         bIncrement = -bIncrement;
     }
+    float x = mRadius * sinf(mPhi) * cosf(mTheta);
+    float z = mRadius * sinf(mPhi) * sinf(mTheta);
+    float y = mRadius * cosf(mPhi);
+    // Build the view matrix.
+    XMVECTOR pos = XMVectorSet(x, y, z, 1.0f);
+    XMVECTOR target = XMVectorZero();
+    XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
+    XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
+    XMStoreFloat4x4(&cameraViewMat, view);
    // create rotation matrices
     XMMATRIX rotXMat = XMMatrixRotationX(0.0000f);
     XMMATRIX rotYMat = XMMatrixRotationY(0.0001f);
